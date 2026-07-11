@@ -1,0 +1,40 @@
+name: Cập nhật Buffett Indicator VN
+
+on:
+  schedule:
+    # 02:00 UTC = 09:00 giờ Việt Nam (UTC+7). Chạy mỗi ngày.
+    # Đổi số phút/giờ ở đây nếu muốn lịch khác — cron dùng giờ UTC, không phải giờ VN.
+    - cron: "0 2 * * *"
+  workflow_dispatch: {}
+    # Cho phép bấm nút "Run workflow" trên tab Actions để chạy tay bất cứ lúc nào,
+    # không cần đợi đến giờ hẹn — dùng để test lần đầu.
+
+permissions:
+  contents: write
+    # Bắt buộc để job commit/push kết quả (history.csv, index.html...) ngược lại repo.
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Cài Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cài thư viện
+        run: pip install -r requirements.txt
+
+      - name: Chạy script cập nhật (silent — không hỏi tay, không mở trình duyệt)
+        run: python buffett_indicator.py --silent
+
+      - name: Commit + push kết quả mới
+        run: |
+          git config user.name "buffett-bot"
+          git config user.email "actions@github.com"
+          git add history.csv buffett_chart.png index.html
+          git diff --quiet --cached || git commit -m "Auto update $(date -u +%Y-%m-%d)"
+          git push

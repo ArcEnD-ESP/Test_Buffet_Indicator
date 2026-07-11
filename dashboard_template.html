@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buffett Indicator VN — Sổ theo dõi định giá</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,500&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF1E8;
+    --paper-card:#FBFBF7;
+    --ink:#16241C;
+    --ink-soft:#4B584E;
+    --rule:#CBD2C2;
+    --brass:#A9832B;
+    --brass-soft:#E4D4A8;
+    --pos:#2F6F4E;
+    --pos-bg:#E3EEE4;
+    --neg:#96382A;
+    --neg-bg:#F3E2DD;
+    --neutral-bg:#EAE7DA;
+    --header:#182A20;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',-apple-system,sans-serif;
+    line-height:1.5;
+    padding:28px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  /* ---------- header ---------- */
+  header{
+    background:var(--header);
+    color:#EFEFE6;
+    border-radius:6px;
+    padding:26px 32px;
+    margin-bottom:22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:14px;
+    border-left:4px solid var(--brass);
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--brass-soft);
+    margin-bottom:6px;
+  }
+  h1{
+    font-family:'Newsreader',serif;
+    font-weight:600;
+    font-size:30px;
+    letter-spacing:0.2px;
+  }
+  header .sub{font-size:13px;color:#B9C0B4;margin-top:4px;}
+  .asof{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:#C9CFC2;
+    text-align:right;
+  }
+  .asof span{display:block;color:#EFEFE6;font-size:14px;margin-top:2px;}
+
+  /* ---------- upload bar ---------- */
+  .upload-bar{
+    background:var(--paper-card);
+    border:1px dashed var(--rule);
+    border-radius:6px;
+    padding:14px 20px;
+    margin-bottom:22px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .upload-bar p{font-size:13px;color:var(--ink-soft);}
+  .upload-bar strong{color:var(--ink);}
+  .upload-controls{display:flex;align-items:center;gap:10px;}
+  input[type=file]{
+    font-family:'Inter';
+    font-size:12px;
+  }
+  .btn{
+    font-family:'Inter';
+    font-size:12px;
+    font-weight:600;
+    padding:8px 14px;
+    border-radius:4px;
+    border:1px solid var(--ink);
+    background:transparent;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .btn:hover{background:var(--ink);color:var(--paper-card);}
+  .sample-flag{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    color:var(--brass);
+    background:var(--brass-soft);
+    padding:4px 9px;
+    border-radius:3px;
+  }
+  .sample-flag.hidden{display:none;}
+
+  /* ---------- KPI row ---------- */
+  .kpi-row{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:14px;
+    margin-bottom:22px;
+  }
+  .kpi{
+    background:var(--paper-card);
+    border-radius:6px;
+    padding:18px 20px;
+    border-top:3px solid var(--rule);
+  }
+  .kpi .label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:0.8px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+  }
+  .kpi .value{
+    font-family:'Newsreader',serif;
+    font-size:27px;
+    font-weight:600;
+  }
+  .kpi .unit{font-size:13px;color:var(--ink-soft);font-weight:400;margin-left:3px;}
+  .kpi.accent{border-top-color:var(--brass);}
+  .kpi.zone .value{font-size:19px;}
+
+  .badge{
+    display:inline-block;
+    padding:3px 10px;
+    border-radius:3px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    font-weight:600;
+    letter-spacing:0.3px;
+  }
+  .badge.pos{background:var(--pos-bg);color:var(--pos);}
+  .badge.neg{background:var(--neg-bg);color:var(--neg);}
+  .badge.neutral{background:var(--neutral-bg);color:var(--ink-soft);}
+
+  /* ---------- gauge ---------- */
+  .gauge-card{
+    background:var(--paper-card);
+    border-radius:6px;
+    padding:20px 24px;
+    margin-bottom:22px;
+  }
+  .gauge-card h3{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.8px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:16px;
+  }
+  .gauge-track{
+    position:relative;
+    height:14px;
+    border-radius:7px;
+    background:linear-gradient(to right,
+      var(--pos) 0%, var(--pos) 16.6%,
+      #C9CFC2 33.3%, #C9CFC2 66.6%,
+      var(--neg) 83.3%, var(--neg) 100%);
+    opacity:0.85;
+  }
+  .gauge-marker{
+    position:absolute;
+    top:-7px;
+    width:3px;
+    height:28px;
+    background:var(--ink);
+    border-radius:2px;
+    transition:left 0.4s ease;
+  }
+  .gauge-marker::after{
+    content:attr(data-z);
+    position:absolute;
+    top:-22px;
+    left:50%;
+    transform:translateX(-50%);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    font-weight:600;
+    white-space:nowrap;
+    color:var(--ink);
+  }
+  .gauge-labels{
+    display:flex;
+    justify-content:space-between;
+    margin-top:10px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    color:var(--ink-soft);
+  }
+
+  /* ---------- chart ---------- */
+  .chart-card{
+    background:var(--paper-card);
+    border-radius:6px;
+    padding:22px 24px;
+    margin-bottom:22px;
+  }
+  .chart-card h3{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.8px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:16px;
+  }
+  .chart-card canvas{max-height:340px;}
+  .legend-note{
+    display:flex;gap:18px;flex-wrap:wrap;
+    margin-top:14px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    color:var(--ink-soft);
+  }
+  .legend-note span{display:inline-flex;align-items:center;gap:6px;}
+  .swatch{width:14px;height:2px;display:inline-block;}
+
+  /* ---------- table ---------- */
+  .table-card{
+    background:var(--paper-card);
+    border-radius:6px;
+    padding:22px 24px;
+    margin-bottom:22px;
+    overflow-x:auto;
+  }
+  .table-card h3{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.8px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:14px;
+  }
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  thead th{
+    text-align:left;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    color:var(--ink-soft);
+    padding:8px 10px;
+    border-bottom:1.5px solid var(--rule);
+  }
+  tbody td{
+    padding:8px 10px;
+    border-bottom:1px solid #E4E7DB;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  tbody tr:last-child td{font-weight:600;background:var(--neutral-bg);}
+
+  footer{
+    text-align:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    color:var(--ink-soft);
+    padding:16px 0 4px;
+  }
+
+  @media(max-width:800px){
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+  }
+  @media(max-width:520px){
+    .kpi-row{grid-template-columns:1fr;}
+    header{flex-direction:column;align-items:flex-start;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <div class="eyebrow">Định giá thị trường · HOSE + HNX + UPCOM</div>
+      <h1>Buffett Indicator VN</h1>
+      <div class="sub">Vốn hóa toàn thị trường / GDP annualized — theo dõi cá nhân</div>
+    </div>
+    <div class="asof">
+      CẬP NHẬT LẦN CUỐI
+      <span id="asof-date">—</span>
+    </div>
+  </header>
+
+  <div class="upload-bar">
+    <p><strong>Dữ liệu tự động cập nhật</strong> mỗi lần chạy script. Muốn xem file <code>history.csv</code> khác (vd. backup cũ), tải lên bên dưới để ghi đè tạm thời.</p>
+    <div class="upload-controls">
+      <span class="sample-flag" id="sample-flag">Đang hiển thị: dữ liệu mẫu</span>
+      <input type="file" id="file-input" accept=".csv">
+    </div>
+  </div>
+
+  <section class="kpi-row">
+    <div class="kpi accent">
+      <div class="label">Buffett Indicator</div>
+      <div class="value" id="kpi-ratio">—<span class="unit">%</span></div>
+    </div>
+    <div class="kpi">
+      <div class="label">Vốn hóa toàn thị trường</div>
+      <div class="value" id="kpi-cap">—<span class="unit">tỷ VND</span></div>
+    </div>
+    <div class="kpi">
+      <div class="label">GDP annualized</div>
+      <div class="value" id="kpi-gdp">—<span class="unit">tỷ VND</span></div>
+    </div>
+    <div class="kpi zone">
+      <div class="label">Z-score / Vùng định giá</div>
+      <div class="value"><span class="badge neutral" id="kpi-zone">—</span></div>
+    </div>
+  </section>
+
+  <div class="gauge-card">
+    <h3>Vị trí Z-score trên thang lịch sử</h3>
+    <div class="gauge-track">
+      <div class="gauge-marker" id="gauge-marker" data-z="—" style="left:50%;"></div>
+    </div>
+    <div class="gauge-labels">
+      <span>−3 SD (rất rẻ)</span>
+      <span>−1 SD</span>
+      <span>Trung bình</span>
+      <span>+1 SD</span>
+      <span>+3 SD (rất đắt)</span>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Ratio theo thời gian</h3>
+    <canvas id="ratio-chart"></canvas>
+    <div class="legend-note">
+      <span><i class="swatch" style="background:#16241C;height:3px;"></i>Buffett Indicator</span>
+      <span><i class="swatch" style="background:#4B584E;border-top:1px dashed #4B584E;height:0;"></i>Mean lịch sử</span>
+      <span><i class="swatch" style="background:#A9832B;height:0;border-top:1px dotted #A9832B;"></i>±1 SD</span>
+      <span><i class="swatch" style="background:#96382A;height:0;border-top:1px dotted #96382A;"></i>±2 SD</span>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <h3>10 điểm dữ liệu gần nhất</h3>
+    <table>
+      <thead>
+        <tr><th>Ngày</th><th>Vốn hóa (tỷ VND)</th><th>GDP annualized (tỷ VND)</th><th>Ratio (%)</th></tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+
+  <footer>Sổ theo dõi cá nhân · Không phải khuyến nghị đầu tư · Dữ liệu do người dùng tự cập nhật</footer>
+</div>
+
+<script>
+/* ---------- sample data (dùng khi chưa tải history.csv) ---------- */
+function generateSample(){
+  const rows = [];
+  const start = new Date('2025-01-01');
+  let cap = 5800000; // tỷ VND, khởi điểm gần thực tế HOSE+HNX+UPCOM cuối 2024
+  let gdp = 11000000; // tỷ VND annualized, xấp xỉ GDP VN 2024-2025
+  for(let i=0;i<26;i++){
+    const d = new Date(start); d.setDate(d.getDate() + i*10);
+    cap = cap * (1 + (Math.random()-0.42)*0.03);
+    gdp = gdp * (1 + 0.006); // GDP tăng đều hơn
+    rows.push({
+      date: d.toISOString().slice(0,10),
+      market_cap_ty_vnd: Math.round(cap),
+      gdp_annualized_ty_vnd: Math.round(gdp),
+      ratio_percent: cap/gdp*100
+    });
+  }
+  return rows;
+}
+
+/* Được script Python ghi đè giá trị này bằng dữ liệu thật từ history.csv.
+   Nếu mở file template gốc trực tiếp (chưa qua script), giữ nguyên null
+   và dashboard tự dùng dữ liệu mẫu. */
+const EMBEDDED_DATA = /*__EMBEDDED_DATA__*/ null;
+
+let DATA;
+let usingSample;
+
+if (EMBEDDED_DATA && EMBEDDED_DATA.length > 0) {
+  DATA = EMBEDDED_DATA.slice().sort((a, b) => a.date.localeCompare(b.date));
+  usingSample = false;
+} else {
+  DATA = generateSample();
+  usingSample = true;
+}
+
+/* ---------- CSV parsing (đơn giản, đúng format buffett_indicator.py xuất ra) ---------- */
+function parseCSV(text){
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(',').map(h=>h.trim());
+  return lines.slice(1).filter(l=>l.trim().length).map(line=>{
+    const cells = line.split(',');
+    const row = {};
+    headers.forEach((h,i)=> row[h] = cells[i] ? cells[i].trim() : '');
+    return {
+      date: row.date,
+      market_cap_ty_vnd: parseFloat(row.market_cap_ty_vnd),
+      gdp_annualized_ty_vnd: parseFloat(row.gdp_annualized_ty_vnd),
+      ratio_percent: parseFloat(row.ratio_percent)
+    };
+  }).filter(r => r.date && !isNaN(r.ratio_percent));
+}
+
+document.getElementById('file-input').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    try{
+      const parsed = parseCSV(ev.target.result);
+      if(parsed.length === 0){ alert('Không đọc được dữ liệu hợp lệ từ file này.'); return; }
+      DATA = parsed.sort((a,b)=> a.date.localeCompare(b.date));
+      usingSample = false;
+      render();
+    }catch(err){
+      alert('Lỗi đọc file CSV: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+});
+
+/* ---------- stats ---------- */
+function mean(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function std(arr,m){
+  if(arr.length<2) return 0;
+  const v = arr.reduce((s,x)=> s+(x-m)**2, 0)/(arr.length-1);
+  return Math.sqrt(v);
+}
+
+function zoneFor(z){
+  if(z===null) return {label:'Chưa đủ dữ liệu', cls:'neutral'};
+  if(z>=2) return {label:`RẤT CAO (z=${z.toFixed(2)})`, cls:'neg'};
+  if(z>=1) return {label:`CAO (z=${z.toFixed(2)})`, cls:'neg'};
+  if(z<=-2) return {label:`RẤT THẤP (z=${z.toFixed(2)})`, cls:'pos'};
+  if(z<=-1) return {label:`THẤP (z=${z.toFixed(2)})`, cls:'pos'};
+  return {label:`BÌNH THƯỜNG (z=${z.toFixed(2)})`, cls:'neutral'};
+}
+
+let chartInstance = null;
+
+function render(){
+  const ratios = DATA.map(d=>d.ratio_percent);
+  const m = mean(ratios);
+  const s = std(ratios, m);
+  const latest = DATA[DATA.length-1];
+  const z = s>0 ? (latest.ratio_percent - m)/s : null;
+
+  document.getElementById('sample-flag').classList.toggle('hidden', !usingSample);
+  document.getElementById('asof-date').textContent = latest.date;
+  document.getElementById('kpi-ratio').innerHTML = latest.ratio_percent.toFixed(1) + '<span class="unit">%</span>';
+  document.getElementById('kpi-cap').innerHTML = Math.round(latest.market_cap_ty_vnd).toLocaleString('vi-VN') + '<span class="unit">tỷ VND</span>';
+  document.getElementById('kpi-gdp').innerHTML = Math.round(latest.gdp_annualized_ty_vnd).toLocaleString('vi-VN') + '<span class="unit">tỷ VND</span>';
+
+  const zone = zoneFor(z);
+  const zoneEl = document.getElementById('kpi-zone');
+  zoneEl.textContent = zone.label;
+  zoneEl.className = 'badge ' + zone.cls;
+
+  // gauge: map z from [-3,3] to [0%,100%]
+  const marker = document.getElementById('gauge-marker');
+  if(z===null){
+    marker.style.left = '50%';
+    marker.setAttribute('data-z','n/a');
+  } else {
+    const clamped = Math.max(-3, Math.min(3, z));
+    const pct = ((clamped + 3) / 6) * 100;
+    marker.style.left = pct + '%';
+    marker.setAttribute('data-z', 'z=' + z.toFixed(2));
+  }
+
+  // table: 10 dòng gần nhất
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = DATA.slice(-10).map(r => `
+    <tr>
+      <td>${r.date}</td>
+      <td>${Math.round(r.market_cap_ty_vnd).toLocaleString('vi-VN')}</td>
+      <td>${Math.round(r.gdp_annualized_ty_vnd).toLocaleString('vi-VN')}</td>
+      <td>${r.ratio_percent.toFixed(1)}</td>
+    </tr>
+  `).join('');
+
+  // chart
+  const labels = DATA.map(d=>d.date);
+  const flat = (v)=> DATA.map(()=>v);
+
+  if(chartInstance) chartInstance.destroy();
+  const ctx = document.getElementById('ratio-chart').getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        { label:'Buffett Indicator', data: ratios, borderColor:'#16241C', backgroundColor:'#16241C', borderWidth:2.5, pointRadius:2, tension:0.25, order:1 },
+        { label:'Mean', data: flat(m), borderColor:'#4B584E', borderWidth:1, borderDash:[6,4], pointRadius:0, order:2 },
+        { label:'+1 SD', data: flat(m+s), borderColor:'#A9832B', borderWidth:1, borderDash:[2,3], pointRadius:0, order:3 },
+        { label:'-1 SD', data: flat(m-s), borderColor:'#A9832B', borderWidth:1, borderDash:[2,3], pointRadius:0, order:3 },
+        { label:'+2 SD', data: flat(m+2*s), borderColor:'#96382A', borderWidth:1, borderDash:[1,3], pointRadius:0, order:4 },
+        { label:'-2 SD', data: flat(m-2*s), borderColor:'#96382A', borderWidth:1, borderDash:[1,3], pointRadius:0, order:4 },
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{display:false}, ticks:{maxTicksLimit:8, font:{family:'IBM Plex Mono', size:10}} },
+        y:{ ticks:{ callback:v=>v.toFixed(0)+'%', font:{family:'IBM Plex Mono', size:10} }, grid:{color:'#E4E7DB'} }
+      }
+    }
+  });
+}
+
+render();
+</script>
+</body>
+</html>
